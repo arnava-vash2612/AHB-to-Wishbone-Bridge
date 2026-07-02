@@ -1,0 +1,9 @@
+# Ignore simulation generated files and directories
+work/
+transcript
+*.wlf
+*.vcd
+*.fsdb
+*.log
+*.ucdb
+modelsim.ini

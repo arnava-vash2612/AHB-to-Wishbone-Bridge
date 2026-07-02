@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHB-to-Wishbone Bridge Presentation</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Base & Dark Electronics Theme --- */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; 
+            color: #cbd5e1;
+            background-image: 
+                linear-gradient(rgba(52, 211, 153, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(52, 211, 153, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* --- Slide Container --- */
+        .slide {
+            display: none;
+            height: 100vh;
+            width: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            padding: 40px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.85); 
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #1e293b;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* --- Typography --- */
+        h1, h2, h3 {
+            font-family: 'Fira Code', monospace;
+            color: #34d399; 
+            text-shadow: 0 0 10px rgba(52, 211, 153, 0.2);
+        }
+        h1 {
+            font-size: 2.8rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        h2 {
+            font-size: 2rem;
+            border-bottom: 2px solid #34d399;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            display: inline-block;
+        }
+        h3 {
+            font-size: 1.4rem;
+            text-align: center;
+            color: #94a3b8;
+        }
+        p, li {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+        strong { color: #f8fafc; }
+        
+        code {
+            background-color: #1e293b;
+            color: #38bdf8; 
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            border: 1px solid #334155;
+        }
+
+        /* --- Images & Diagrams --- */
+        .image-container {
+            background-color: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            text-align: center;
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        img {
+            max-height: 400px;
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        .placeholder {
+            border: 1px dashed #34d399;
+            padding: 50px;
+            color: #34d399;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            background-color: rgba(52, 211, 153, 0.05);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* --- Navigation UI --- */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        button {
+            background-color: #0f172a;
+            color: #34d399;
+            border: 1px solid #34d399;
+            padding: 10px 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #34d399;
+            color: #0f172a;
+            box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            font-family: 'Fira Code', monospace;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slide active">
+        <div class="content" style="text-align: center;">
+            <h1>AHB-to-Wishbone Bridge</h1>
+            <h3>RTL Implementation & Verification</h3>
+            <div style="margin-top: 50px; border-top: 1px solid #334155; padding-top: 20px;">
+                <p><strong>Submitted by:</strong> Arnava Vashishtha</p>
+                <p style="color: #94a3b8; font-size: 1rem; margin-top: -5px;">Trainee, Embedded Systems</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="content">
+            <h2>Objective & Challenge</h2>
+            <ul>
+                <li><strong>The Goal:</strong> Design an RTL bridge to enable seamless communication between a high-performance AHB Master and a Wishbone Slave.</li>
+                <li><strong>The Core Challenge (Phase Mismatch):</strong>
+                    <ul>
+                        <li><em>AHB Protocol:</em> Pipelined architecture. Address phase (Cycle 1) is decoupled from the Data phase (Cycle 2).</li>
+                        <li><em>Wishbone Protocol:</em> Flat architecture. Address, Control, and Data must be asserted concurrently in a single cycle.</li>
+                    </ul>
+                </li>
+                <li><strong>The Solution:</strong> Implement a sequential buffer stage governed by an FSM to capture and delay AHB commands until the data phase aligns.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="content">
+            <h2>Architecture Block Diagram</h2>
+            <div class="image-container" style="background-color: #0f172a; padding: 10px 0 0 0;">
+                <svg viewBox="0 0 800 350" width="100%" height="350" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+                        </marker>
+                    </defs>
+                    <style>
+                        .box { fill: #1e293b; stroke: #34d399; stroke-width: 2; rx: 8; }
+                        .bridge-box { fill: rgba(52, 211, 153, 0.08); stroke: #34d399; stroke-width: 3; stroke-dasharray: 5,5; rx: 8; }
+                        .text-title { fill: #f8fafc; font-family: 'Fira Code', monospace; font-size: 15px; font-weight: bold; text-anchor: middle; }
+                        .text-sig { fill: #94a3b8; font-family: 'Fira Code', monospace; font-size: 11px; }
+                        .line { stroke: #64748b; stroke-width: 2; marker-end: url(#arrow); }
+                    </style>
+
+                    <rect x="20" y="100" width="150" height="150" class="box" />
+                    <text x="95" y="180" class="text-title">AHB Master</text>
+
+                    <rect x="300" y="60" width="200" height="230" class="bridge-box" />
+                    <text x="400" y="105" class="text-title" fill="#34d399">AHB-to-WB Bridge</text>
+                    <text x="400" y="125" class="text-title" style="font-size: 12px; fill:#94a3b8;">(DUT)</text>
+
+                    <rect x="630" y="100" width="150" height="150" class="box" />
+                    <text x="705" y="180" class="text-title">WB Slave</text>
+
+                    <line x1="170" y1="125" x2="290" y2="125" class="line" />
+                    <text x="175" y="120" class="text-sig">HADDR, HWDATA</text>
+                    
+                    <line x1="170" y1="155" x2="290" y2="155" class="line" />
+                    <text x="175" y="150" class="text-sig">HTRANS, HWRITE</text>
+
+                    <line x1="170" y1="185" x2="290" y2="185" class="line" />
+                    <text x="175" y="180" class="text-sig">HSIZE, HSEL</text>
+
+                    <line x1="300" y1="215" x2="180" y2="215" class="line" />
+                    <text x="175" y="210" class="text-sig">HREADYOUT, HRDATA, HRESP</text>
+
+                    <line x1="500" y1="125" x2="620" y2="125" class="line" />
+                    <text x="505" y="120" class="text-sig">ADR_O, DAT_O</text>
+
+                    <line x1="500" y1="155" x2="620" y2="155" class="line" />
+                    <text x="505" y="150" class="text-sig">CYC_O, STB_O</text>
+
+                    <line x1="500" y1="185" x2="620" y2="185" class="line" />
+                    <text x="505" y="180" class="text-sig">WE_O, SEL_O</text>
+
+                    <line x1="630" y1="215" x2="510" y2="215" class="line" />
+                    <text x="505" y="210" class="text-sig">ACK_I, DAT_I, ERR_I</text>
+                </svg>
+            </div>
+            <p style="text-align: center; font-size: 0.95rem; color: #94a3b8; margin-top: 15px;">
+                The bridge maps pipelined AHB signals to flat Wishbone B.3 protocols in real-time.
+            </p>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="content">
+            <h2>Flow Control: The Stall Mechanism</h2>
+            <p><strong>The Necessity of Stalling:</strong> The AHB Master expects a rapid response, but target Wishbone Slaves frequently require wait states to process data.</p>
+            <p><strong>Execution Strategy:</strong></p>
+            <ul>
+                <li>The bridge actively drives <code>HREADYOUT = 0</code> during active Wishbone cycles.</li>
+                <li>This asserts backpressure, forcing the AHB Master to freeze its instruction pipeline.</li>
+                <li>Upon the Wishbone Slave asserting <code>ACK_I</code>, the bridge restores <code>HREADYOUT = 1</code>, finalizing the transfer and allowing the AHB Master to proceed.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="content">
+            <h2>FSM State Logic</h2>
+            <div class="image-container">
+                <img src="FSMStateLogic.png" alt="FSM State Logic Diagram" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="placeholder" style="display:none;">
+                    >_ missing: FSMStateLogic.png<br>
+                    [Place your exported FSM image in the docs/ folder]
+                </div>
+            </div>
+            <p style="text-align: center; font-size: 0.95rem; color: #94a3b8; margin-top: 15px;">
+                Bridge Control Logic Overview
+            </p>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="content">
+            <h2>Verification & Waveforms</h2>
+            <div class="image-container">
+                <img src="Simulation_Waveforms.png" alt="Simulation Waveform" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="placeholder" style="display:none;">
+                    >_ missing: Simulation_Waveforms.png<br>
+                    [Place your EPWave screenshot in the docs/ folder]
+                </div>
+            </div>
+            <ul style="margin-top: 20px;">
+                <li><strong>Environment:</strong> Bridge instantiated with a 2-cycle wait-state Dummy Wishbone Slave.</li>
+                <li><strong>Result:</strong> Simulation confirms <code>HREADYOUT</code> asserts correctly to stall the AHB bus during the wait cycles.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="content">
+            <h2>Conclusion</h2>
+            <ul>
+                <li>Zero-wait state and multi-wait state transfers have been successfully verified via RTL simulation.</li>
+                <li>The codebase is fully sanitized against <code>X</code> propagation states using explicit zero-initialization.</li>
+                <li>The bridge logic is synthesizable and prepared for integration into a larger System-on-Chip (SoC) framework.</li>
+            </ul>
+            <h2 style="border: none; text-align: center; width: 100%; margin-top: 60px; font-size: 3rem;">Thank You</h2>
+        </div>
+    </div>
+
+    <div class="slide-counter" id="slide-counter">1 / 7</div>
+    <div class="nav-controls">
+        <button onclick="changeSlide(-1)">◄ Prev</button>
+        <button onclick="changeSlide(1)">Next ►</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const counter = document.getElementById('slide-counter');
+
+        function updateSlide() {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide].classList.add('active');
+            counter.innerText = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide < 0) currentSlide = 0;
+            if (currentSlide >= slides.length) currentSlide = slides.length - 1;
+            updateSlide();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft') {
+                changeSlide(-1);
+            }
+        });
+    </script>
+</body>
+</html>
